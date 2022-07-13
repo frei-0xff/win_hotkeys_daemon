@@ -43,13 +43,13 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
-			isWinKeyPressed := winKeyState()
-			if (kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS) &&
-				wparam != WPARAM(WM_KEYDOWN) && altTabEmulating {
+			if altTabEmulating && wparam != WPARAM(WM_KEYDOWN) &&
+				(kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS) {
 				altTabEmulating = false
 				releaseKey(VK_MENU)
 			}
 			if wparam == WPARAM(WM_KEYDOWN) || wparam == WPARAM(WM_SYSKEYDOWN) {
+				isWinKeyPressed := winKeyState()
 				if isWinKeyPressed && kbd.VkCode == VK_TAB {
 					if !altTabEmulating {
 						altTabEmulating = true
