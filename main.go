@@ -17,10 +17,8 @@ var (
 
 /*
 Handles callbacks for low level keyboard events
-Resolves keypress to printable ascii character and appends to log
 */
 func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM) wintypes.LRESULT {
-	// Based on KEYUP events as that should be more reliable for how the resulting text actually looks
 	if nCode >= 0 {
 		// Resolve struct that holds real event data
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
