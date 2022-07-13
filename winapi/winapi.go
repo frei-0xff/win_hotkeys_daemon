@@ -326,7 +326,7 @@ SHORT GetAsyncKeyState(
 );
 */
 func GetAsyncKeyState(nVirtKey int) int {
-	ret, _, _ := getKeyState.Call(
+	ret, _, _ := getAsyncKeyState.Call(
 		uintptr(nVirtKey))
 	return int(ret)
 }
