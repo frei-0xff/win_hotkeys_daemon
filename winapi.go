@@ -1,11 +1,11 @@
 // Base on: https://github.com/vgo0/gologger/blob/master/winapi/winapi.go
-package winapi
+package main
 
 import (
+	"runtime"
 	"syscall"
 	"unsafe"
 
-	"github.com/frei-0xff/win_hotkeys_daemon/wintypes"
 	"golang.org/x/sys/windows"
 )
 
@@ -27,10 +27,18 @@ var (
 	dispatchMessage     = user32.NewProc("DispatchMessage")
 	keybdEvent          = user32.NewProc("keybd_event")
 	getAsyncKeyState    = user32.NewProc("GetAsyncKeyState")
+	postMessage         = user32.NewProc("PostMessageA")
+	openClipboard       = user32.NewProc("OpenClipboard")
+	getClipboardData    = user32.NewProc("GetClipboardData")
+	closeClipboard      = user32.NewProc("CloseClipboard")
+	setCursorPos        = user32.NewProc("SetCursorPos")
 
 	kernel32           = windows.NewLazySystemDLL("kernel32.dll")
 	getCurrentThreadId = kernel32.NewProc("GetCurrentThreadId")
 	getThreadId        = kernel32.NewProc("GetThreadId")
+	winExec            = kernel32.NewProc("WinExec")
+	globalLock         = kernel32.NewProc("GlobalLock")
+	globalUnlock       = kernel32.NewProc("GlobalUnlock")
 )
 
 /*
@@ -38,10 +46,10 @@ https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegro
 HWND GetForegroundWindow();
 Get currently active window if needed
 */
-func GetForegroundWindow() wintypes.HWND {
+func GetForegroundWindow() HWND {
 	ret, _, _ := getForegroundWindow.Call()
 
-	return wintypes.HWND(ret)
+	return HWND(ret)
 }
 
 /*
@@ -51,7 +59,7 @@ int GetWindowTextLengthW(
 );
 Get length of window title to fetch via GetWindowText
 */
-func GetWindowTextLength(hwnd wintypes.HWND) int {
+func GetWindowTextLength(hwnd HWND) int {
 	ret, _, _ := getWindowTextLength.Call(
 		uintptr(hwnd))
 
@@ -68,7 +76,7 @@ int GetWindowTextW(
 
 Get window title (calls GetWindowTextLength and converts to string for you)
 */
-func GetWindowText(hwnd wintypes.HWND) string {
+func GetWindowText(hwnd HWND) string {
 	textLen := GetWindowTextLength(hwnd) + 1
 
 	buf := make([]uint16, textLen)
@@ -90,10 +98,10 @@ DWORD GetThreadId(
   [in] HANDLE Thread
 );
 */
-func GetThreadId(Thread wintypes.HANDLE) wintypes.DWORD {
+func GetThreadId(Thread HANDLE) DWORD {
 	ret, _, _ := getThreadId.Call(uintptr(Thread))
 
-	return wintypes.DWORD(ret)
+	return DWORD(ret)
 }
 
 /*
@@ -110,7 +118,7 @@ HWINEVENTHOOK SetWinEventHook(
 
 Used by us to detect changes in selected / foreground window via EVENT_OBJECT_FOCUS
 */
-func SetWinEventHook(eventMin wintypes.DWORD, eventMax wintypes.DWORD, hmodWinEventProc wintypes.HMODULE, pfnWinEventProc wintypes.WINEVENTPROC, idProcess wintypes.DWORD, idThread wintypes.DWORD, dwFlags wintypes.DWORD) wintypes.HWINEVENTHOOK {
+func SetWinEventHook(eventMin DWORD, eventMax DWORD, hmodWinEventProc HMODULE, pfnWinEventProc WINEVENTPROC, idProcess DWORD, idThread DWORD, dwFlags DWORD) HWINEVENTHOOK {
 	ret, _, _ := setWinEventHook.Call(
 		uintptr(eventMin),
 		uintptr(eventMax),
@@ -121,7 +129,7 @@ func SetWinEventHook(eventMin wintypes.DWORD, eventMax wintypes.DWORD, hmodWinEv
 		uintptr(dwFlags),
 	)
 
-	return wintypes.HWINEVENTHOOK(ret)
+	return HWINEVENTHOOK(ret)
 }
 
 /*
@@ -134,24 +142,24 @@ BOOL AttachThreadInput(
 
 Used to allow our thread receiving low level keyboard events to get an accurate keyboard state for use in ToAscii
 */
-func AttachThreadInput(idAttach wintypes.DWORD, idAttachTo wintypes.DWORD, fAttach wintypes.BOOL) wintypes.BOOL {
+func AttachThreadInput(idAttach DWORD, idAttachTo DWORD, fAttach BOOL) BOOL {
 	ret, _, _ := attachThreadInput.Call(
 		uintptr(idAttach),
 		uintptr(idAttachTo),
 		uintptr(fAttach),
 	)
 
-	return wintypes.BOOL(ret)
+	return BOOL(ret)
 }
 
 /*
 https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid
 DWORD GetCurrentThreadId();
 */
-func GetCurrentThreadId() wintypes.DWORD {
+func GetCurrentThreadId() DWORD {
 	ret, _, _ := getCurrentThreadId.Call()
 
-	return wintypes.DWORD(ret)
+	return DWORD(ret)
 }
 
 /*
@@ -167,7 +175,7 @@ int ToAscii(
 This is used to take a current keyboard state and the VkCode from a low level keyboard event and turn it into the real text
 This approach takes care of things like taking into account if caps lock or shift keys are active
 */
-func ToAscii(uVirtKey wintypes.DWORD, uScanCode wintypes.DWORD, lpKeyState *[256]byte, lpChar *uint16, uFlags wintypes.DWORD) int {
+func ToAscii(uVirtKey DWORD, uScanCode DWORD, lpKeyState *[256]byte, lpChar *uint16, uFlags DWORD) int {
 	ret, _, _ := toAscii.Call(
 		uintptr(uVirtKey),
 		uintptr(uScanCode),
@@ -185,11 +193,11 @@ BOOL GetKeyboardState(
   [out] PBYTE lpKeyState
 );
 */
-func GetKeyboardState(lpKeyState *[256]byte) wintypes.BOOL {
+func GetKeyboardState(lpKeyState *[256]byte) BOOL {
 	ret, _, _ := getKeyboardState.Call(
 		uintptr(unsafe.Pointer(&(*lpKeyState)[0])),
 	)
-	return wintypes.BOOL(ret)
+	return BOOL(ret)
 }
 
 /*
@@ -201,14 +209,14 @@ HHOOK SetWindowsHookExA(
   [in] DWORD     dwThreadId
 );
 */
-func SetWindowsHookEx(idHook int, lpfn wintypes.HOOKPROC, hMod wintypes.HINSTANCE, dwThreadId wintypes.DWORD) wintypes.HHOOK {
+func SetWindowsHookEx(idHook int, lpfn HOOKPROC, hMod HINSTANCE, dwThreadId DWORD) HHOOK {
 	ret, _, _ := setWindowsHookEx.Call(
 		uintptr(idHook),
 		uintptr(syscall.NewCallback(lpfn)),
 		uintptr(hMod),
 		uintptr(dwThreadId),
 	)
-	return wintypes.HHOOK(ret)
+	return HHOOK(ret)
 }
 
 /*
@@ -217,7 +225,7 @@ BOOL UnhookWindowsHookEx(
   [in] HHOOK hhk
 );
 */
-func UnhookWindowsHookEx(hhk wintypes.HHOOK) bool {
+func UnhookWindowsHookEx(hhk HHOOK) bool {
 	ret, _, _ := unhookWindowsHookEx.Call(
 		uintptr(hhk),
 	)
@@ -230,10 +238,10 @@ BOOL UnhookWinEvent(
   [in] HWINEVENTHOOK hWinEventHook
 );
 */
-func UnhookWinEvent(hWinEventHook wintypes.HWINEVENTHOOK) wintypes.BOOL {
+func UnhookWinEvent(hWinEventHook HWINEVENTHOOK) BOOL {
 	ret, _, _ := unhookWinEvent.Call(uintptr(hWinEventHook))
 
-	return wintypes.BOOL(ret)
+	return BOOL(ret)
 }
 
 /*
@@ -245,14 +253,14 @@ LRESULT CallNextHookEx(
   [in]           LPARAM lParam
 );
 */
-func CallNextHookEx(hhk wintypes.HHOOK, nCode int, wParam wintypes.WPARAM, lParam wintypes.LPARAM) wintypes.LRESULT {
+func CallNextHookEx(hhk HHOOK, nCode int, wParam WPARAM, lParam LPARAM) LRESULT {
 	ret, _, _ := callNextHookEx.Call(
 		uintptr(hhk),
 		uintptr(nCode),
 		uintptr(wParam),
 		uintptr(lParam),
 	)
-	return wintypes.LRESULT(ret)
+	return LRESULT(ret)
 }
 
 /*
@@ -261,12 +269,12 @@ LRESULT DispatchMessage(
   [in] const MSG *lpMsg
 );
 */
-func DispatchMessage(msg *wintypes.MSG) wintypes.LRESULT {
+func DispatchMessage(msg *MSG) LRESULT {
 	ret, _, _ := dispatchMessage.Call(
 		uintptr(unsafe.Pointer(msg)),
 	)
 
-	return wintypes.LRESULT(ret)
+	return LRESULT(ret)
 }
 
 /*
@@ -275,12 +283,12 @@ BOOL TranslateMessage(
   [in] const MSG *lpMsg
 );
 */
-func TranslateMessage(msg *wintypes.MSG) wintypes.BOOL {
+func TranslateMessage(msg *MSG) BOOL {
 	ret, _, _ := translateMessage.Call(
 		uintptr(unsafe.Pointer(msg)),
 	)
 
-	return wintypes.BOOL(ret)
+	return BOOL(ret)
 }
 
 /*
@@ -292,7 +300,7 @@ BOOL GetMessage(
   [in]           UINT  wMsgFilterMax
 );
 */
-func GetMessage(msg *wintypes.MSG, hwnd wintypes.HWND, msgFilterMin uint32, msgFilterMax uint32) int {
+func GetMessage(msg *MSG, hwnd HWND, msgFilterMin uint32, msgFilterMax uint32) int {
 	ret, _, _ := getMessage.Call(
 		uintptr(unsafe.Pointer(msg)),
 		uintptr(hwnd),
@@ -310,7 +318,7 @@ void keybd_event(
   [in] ULONG_PTR dwExtraInfo
 );
 */
-func KeybdEvent(bVk, bScan wintypes.BYTE, dwFlags wintypes.DWORD, dwExtraInfo wintypes.DWORD) {
+func KeybdEvent(bVk, bScan BYTE, dwFlags DWORD, dwExtraInfo DWORD) {
 	keybdEvent.Call(
 		uintptr(bVk),
 		uintptr(bScan),
@@ -329,4 +337,96 @@ func GetAsyncKeyState(nVirtKey int) int {
 	ret, _, _ := getAsyncKeyState.Call(
 		uintptr(nVirtKey))
 	return int(ret)
+}
+
+/*
+https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-winexec
+UINT WinExec(
+  [in] LPCSTR lpCmdLine,
+  [in] UINT   uCmdShow
+);
+*/
+func WinExec(lpCmdLine string, uCmdShow DWORD) int {
+	buf := []byte(lpCmdLine)
+	ret, _, _ := winExec.Call(
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(uCmdShow))
+	return int(ret)
+}
+
+/*
+https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postmessagea
+BOOL PostMessageA(
+  [in, optional] HWND   hWnd,
+  [in]           UINT   Msg,
+  [in]           WPARAM wParam,
+  [in]           LPARAM lParam
+);
+*/
+func PostMessage(hwnd HWND, Msg DWORD, wParam WPARAM, lParam LPARAM) BOOL {
+	ret, _, _ := postMessage.Call(
+		uintptr(hwnd),
+		uintptr(Msg),
+		uintptr(wParam),
+		uintptr(lParam),
+	)
+	return BOOL(ret)
+}
+
+/*
+https://docs.microsoft.com/ru-ru/windows/win32/api/winuser/nf-winuser-getclipboarddata?redirectedfrom=MSDN
+HANDLE GetClipboardData(
+  [in] UINT uFormat
+);
+*/
+func GetClipboardData() (text string) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	ret, _, _ := openClipboard.Call(0)
+	if ret == 0 {
+		return
+	}
+	h, _, _ := getClipboardData.Call(CF_TEXT)
+	if h == 0 {
+		closeClipboard.Call()
+		return
+	}
+	l, _, _ := globalLock.Call(h)
+	if l == 0 {
+		closeClipboard.Call()
+		return
+	}
+	s := (*[1 << 20]byte)(unsafe.Pointer(l))[:]
+	for i, v := range s {
+		if v == 0 {
+			text = string(s[0:i])
+			break
+		}
+	}
+	l, _, _ = globalUnlock.Call(h)
+	if l == 0 {
+		closeClipboard.Call()
+		return
+	}
+	ret, _, _ = closeClipboard.Call()
+	if ret == 0 {
+		return
+	}
+	return
+}
+
+/*
+https://docs.microsoft.com/ru-ru/windows/win32/api/winuser/nf-winuser-setcursorpos
+BOOL SetCursorPos(
+  [in] int X,
+  [in] int Y
+);
+*/
+func SetCursorPos(X, Y int) BOOL {
+	ret, _, _ := setCursorPos.Call(
+		uintptr(X),
+		uintptr(Y),
+	)
+	return BOOL(ret)
 }

@@ -2,70 +2,130 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"unsafe"
-
-	"github.com/frei-0xff/win_hotkeys_daemon/winapi"
-	"github.com/frei-0xff/win_hotkeys_daemon/wintypes"
 )
 
 var (
-	keyboardHook    wintypes.HHOOK
-	keyCallback     wintypes.HOOKPROC = keyPressCallback
-	altTabEmulating bool              = false
+	keyboardHook    HHOOK
+	keyCallback     HOOKPROC = keyPressCallback
+	altTabEmulating bool     = false
 )
+
+func winKeyState() bool {
+	return GetAsyncKeyState(int(VK_LWIN)) > 1 ||
+		GetAsyncKeyState(int(VK_RWIN)) > 1 ||
+		GetAsyncKeyState(int(VK_APPS)) > 1
+}
+
+func shiftKeyState() bool {
+	return GetAsyncKeyState(int(VK_SHIFT)) > 1
+}
+
+func pressKey(key DWORD) {
+	KeybdEvent(BYTE(key), 0xff, 0, 0)
+}
+
+func releaseKey(key DWORD) {
+	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_KEYUP, 0)
+}
+
+func runProgram(path string, flags DWORD) {
+	go func() {
+		WinExec(path, flags)
+	}()
+}
 
 /*
 Handles callbacks for low level keyboard events
 */
-func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM) wintypes.LRESULT {
+func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	if nCode >= 0 {
-		// Resolve struct that holds real event data
-		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
+		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
-			winKeyPressed := winapi.GetAsyncKeyState(int(wintypes.VK_LWIN)) > 1 || winapi.GetAsyncKeyState(int(wintypes.VK_RWIN)) > 1
-			if (kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN) &&
-				wparam != wintypes.WPARAM(wintypes.WM_KEYDOWN) && altTabEmulating {
+			isWinKeyPressed := winKeyState()
+			if (kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS) &&
+				wparam != WPARAM(WM_KEYDOWN) && altTabEmulating {
 				altTabEmulating = false
-				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
+				releaseKey(VK_MENU)
 			}
-			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
-				fmt.Print(winapi.GetAsyncKeyState(int(wintypes.VK_LWIN)), " ")
-				fmt.Print(winapi.GetAsyncKeyState(int(wintypes.VK_RWIN)), " ")
-				if winKeyPressed {
-					fmt.Print("win+")
-				}
-				fmt.Println(kbd.VkCode, " ", kbd.ScanCode)
-				if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
+			if wparam == WPARAM(WM_KEYDOWN) || wparam == WPARAM(WM_SYSKEYDOWN) {
+				if isWinKeyPressed && kbd.VkCode == VK_TAB {
 					if !altTabEmulating {
 						altTabEmulating = true
-						winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, 0, 0) //Alt Press
+						pressKey(VK_MENU)
 					}
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0xff, 0, 0)                        // Tab Press
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Tab Release
+					pressKey(VK_TAB)
+					releaseKey(VK_TAB)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_W {
+					runProgram(`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`, SW_MAXIMIZE)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_RETURN {
+					runProgram(`C:\Program Files\WezTerm\wezterm-gui.exe`, SW_MAXIMIZE)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_Q {
+					PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_J {
+					pressKey(VK_MENU)
+					pressKey(VK_ESCAPE)
+					releaseKey(VK_ESCAPE)
+					releaseKey(VK_MENU)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_K {
+					pressKey(VK_MENU)
+					pressKey(VK_SHIFT)
+					pressKey(VK_ESCAPE)
+					releaseKey(VK_ESCAPE)
+					releaseKey(VK_SHIFT)
+					releaseKey(VK_MENU)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_M {
+					if shiftKeyState() {
+						clpText := strings.ReplaceAll(GetClipboardData(), `"`, ``)
+						runProgram(fmt.Sprintf(`C:/ProgramData/chocolatey/lib/mpv.install/tools/mpv.com "%s"`, clpText), SW_MINIMIZE)
+						return 1
+					}
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_RIGHT {
+					SetCursorPos(2560, 1592)
+					SetCursorPos(2560, 1592)
+					return 1
+				}
+				if isWinKeyPressed && kbd.VkCode == VK_LEFT {
+					SetCursorPos(960, 540)
+					SetCursorPos(960, 540)
 					return 1
 				}
 			}
 		}
 	}
-	return winapi.CallNextHookEx(keyboardHook, nCode, wparam, lparam)
+	return CallNextHookEx(keyboardHook, nCode, wparam, lparam)
 }
 
 /*
 Attaches our initial hooks and runs the message queue
 */
 func Start() {
-	keyboardHook = winapi.SetWindowsHookEx(
-		wintypes.WH_KEYBOARD_LL,
+	keyboardHook = SetWindowsHookEx(
+		WH_KEYBOARD_LL,
 		keyCallback,
 		0,
 		0,
 	)
-	defer winapi.UnhookWindowsHookEx(keyboardHook)
+	defer UnhookWindowsHookEx(keyboardHook)
 
-	var msg wintypes.MSG
-	for winapi.GetMessage(&msg, 0, 0, 0) != 0 {
-		winapi.TranslateMessage(&msg)
-		winapi.DispatchMessage(&msg)
+	var msg MSG
+	for GetMessage(&msg, 0, 0, 0) != 0 {
+		TranslateMessage(&msg)
+		DispatchMessage(&msg)
 	}
 }
 

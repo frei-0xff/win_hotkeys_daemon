@@ -1,5 +1,5 @@
 // Based on: https://github.com/vgo0/gologger/blob/master/wintypes/wintypes.go
-package wintypes
+package main
 
 const (
 	//https://docs.microsoft.com/en-us/windows/win32/winauto/event-constants
@@ -16,6 +16,12 @@ const (
 
 	//https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexa
 	WH_KEYBOARD_LL = 13
+
+	//https://docs.microsoft.com/en-us/windows/win32/winmsg/wm-close
+	WM_CLOSE = 0x10
+
+	//https://docs.microsoft.com/en-us/windows/win32/dataxchg/standard-clipboard-formats
+	CF_TEXT = 0x01
 )
 
 // https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
@@ -185,6 +191,32 @@ const (
 	VK_INSERT              DWORD = 0x2D
 	VK_DELETE              DWORD = 0x2E
 	VK_HELP                DWORD = 0x2F
+	VK_A                   DWORD = 0x41
+	VK_B                   DWORD = 0x42
+	VK_C                   DWORD = 0x43
+	VK_D                   DWORD = 0x44
+	VK_E                   DWORD = 0x45
+	VK_F                   DWORD = 0x46
+	VK_G                   DWORD = 0x47
+	VK_H                   DWORD = 0x48
+	VK_I                   DWORD = 0x49
+	VK_J                   DWORD = 0x4A
+	VK_K                   DWORD = 0x4B
+	VK_L                   DWORD = 0x4C
+	VK_M                   DWORD = 0x4D
+	VK_N                   DWORD = 0x4E
+	VK_O                   DWORD = 0x4F
+	VK_P                   DWORD = 0x50
+	VK_Q                   DWORD = 0x51
+	VK_R                   DWORD = 0x52
+	VK_S                   DWORD = 0x53
+	VK_T                   DWORD = 0x54
+	VK_U                   DWORD = 0x55
+	VK_V                   DWORD = 0x56
+	VK_W                   DWORD = 0x57
+	VK_X                   DWORD = 0x58
+	VK_Y                   DWORD = 0x59
+	VK_Z                   DWORD = 0x5A
 	VK_LWIN                DWORD = 0x5B
 	VK_RWIN                DWORD = 0x5C
 	VK_APPS                DWORD = 0x5D
@@ -279,4 +311,22 @@ const (
 	VK_NONAME              DWORD = 0xFC
 	VK_PA1                 DWORD = 0xFD
 	VK_OEM_CLEAR           DWORD = 0xFE
+)
+
+//https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+const (
+	SW_HIDE       = 0
+	SW_SHOWNORMAL = 1
+	SW_NORMAL
+	SW_SHOWMINIMIZED = 2
+	SW_SHOWMAXIMIZED = 3
+	SW_MAXIMIZE
+	SW_SHOWNOACTIVATE  = 4
+	SW_SHOW            = 5
+	SW_MINIMIZE        = 6
+	SW_SHOWMINNOACTIVE = 7
+	SW_SHOWNA          = 8
+	SW_RESTORE         = 9
+	SW_SHOWDEFAULT     = 10
+	SW_FORCEMINIMIZE   = 11
 )
