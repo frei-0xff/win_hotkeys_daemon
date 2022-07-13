@@ -6,14 +6,13 @@ import (
 
 	"github.com/frei-0xff/win_hotkeys_daemon/winapi"
 	"github.com/frei-0xff/win_hotkeys_daemon/wintypes"
-	"github.com/tevino/abool/v2"
 )
 
 var (
 	keyboardHook    wintypes.HHOOK
 	keyCallback     wintypes.HOOKPROC = keyPressCallback
-	winKeyPressed   *abool.AtomicBool
-	altTabEmulating *abool.AtomicBool
+	winKeyPressed   bool              = false
+	altTabEmulating bool              = false
 )
 
 /*
@@ -25,26 +24,26 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
 			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
-				winKeyPressed.Set()
+				winKeyPressed = true
 			} else {
-				if altTabEmulating.IsSet() {
+				winKeyPressed = false
+				if altTabEmulating {
+					altTabEmulating = false
 					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
-					altTabEmulating.UnSet()
 				}
-				winKeyPressed.UnSet()
 			}
 		}
 		if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
-			if winKeyPressed.IsSet() {
+			if winKeyPressed {
 				fmt.Print("win+")
 			}
 			fmt.Println(kbd.VkCode)
-			if winKeyPressed.IsSet() && kbd.VkCode == wintypes.VK_TAB {
-				if altTabEmulating.IsNotSet() {
-					altTabEmulating.Set()
+			if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
+				if !altTabEmulating {
+					altTabEmulating = true
 					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, 0, 0) //Alt Press
 				}
-				if altTabEmulating.IsSet() {
+				if altTabEmulating {
 					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, 0, 0)                        // Tab Press
 					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, wintypes.KEYEVENTF_KEYUP, 0) // Tab Release
 					return 1
@@ -76,8 +75,6 @@ func Start() {
 }
 
 func main() {
-	winKeyPressed = abool.New()
-	altTabEmulating = abool.New()
 	go Start()
 	select {}
 }
