@@ -32,6 +32,10 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 			}
 			fmt.Println(kbd.VkCode)
 			if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
+				winapi.KeybdEvent(wintypes.VK_MENU, 0xb8, 0, 0)                        //Alt Press
+				winapi.KeybdEvent(wintypes.VK_TAB, 0x8f, 0, 0)                         // Tab Press
+				winapi.KeybdEvent(wintypes.VK_TAB, 0x8f, wintypes.KEYEVENTF_KEYUP, 0)  // Tab Release
+				winapi.KeybdEvent(wintypes.VK_MENU, 0xb8, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
 				return 1
 			}
 		}

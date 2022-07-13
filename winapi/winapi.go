@@ -25,6 +25,7 @@ var (
 	getForegroundWindow = user32.NewProc("GetForegroundWindow")
 	translateMessage    = user32.NewProc("TranslateMessage")
 	dispatchMessage     = user32.NewProc("DispatchMessage")
+	keybdEvent          = user32.NewProc("keybd_event")
 
 	kernel32           = windows.NewLazySystemDLL("kernel32.dll")
 	getCurrentThreadId = kernel32.NewProc("GetCurrentThreadId")
@@ -297,4 +298,22 @@ func GetMessage(msg *wintypes.MSG, hwnd wintypes.HWND, msgFilterMin uint32, msgF
 		uintptr(msgFilterMin),
 		uintptr(msgFilterMax))
 	return int(ret)
+}
+
+/*
+https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-keybd_event
+void keybd_event(
+  [in] BYTE      bVk,
+  [in] BYTE      bScan,
+  [in] DWORD     dwFlags,
+  [in] ULONG_PTR dwExtraInfo
+);
+*/
+func KeybdEvent(bVk, bScan wintypes.BYTE, dwFlags wintypes.DWORD, dwExtraInfo wintypes.DWORD) {
+	keybdEvent.Call(
+		uintptr(bVk),
+		uintptr(bScan),
+		uintptr(dwFlags),
+		uintptr(dwExtraInfo),
+	)
 }
