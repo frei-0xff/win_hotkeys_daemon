@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	keyboardHook  wintypes.HHOOK
-	keyCallback   wintypes.HOOKPROC = keyPressCallback
-	winKeyPressed bool              = false
+	keyboardHook    wintypes.HHOOK
+	keyCallback     wintypes.HOOKPROC = keyPressCallback
+	winKeyPressed   bool              = false
+	altTabEmulating bool              = false
 )
 
 /*
@@ -24,7 +25,15 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 		// Resolve struct that holds real event data
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
-			winKeyPressed = wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN)
+			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
+				winKeyPressed = true
+			} else {
+				winKeyPressed = false
+				if altTabEmulating {
+					altTabEmulating = false
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
+				}
+			}
 		}
 		if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
 			if winKeyPressed {
@@ -32,10 +41,15 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 			}
 			fmt.Println(kbd.VkCode)
 			if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
-				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, 0, 0)                        //Alt Press
-				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, 0, 0)                         // Tab Press
-				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, wintypes.KEYEVENTF_KEYUP, 0)  // Tab Release
-				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
+				if !altTabEmulating {
+					altTabEmulating = true
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, 0, 0) //Alt Press
+				}
+				if altTabEmulating {
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, 0, 0)                        // Tab Press
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, wintypes.KEYEVENTF_KEYUP, 0) // Tab Release
+					return 1
+				}
 				return 1
 			}
 		}
