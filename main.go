@@ -80,10 +80,10 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 				}
 				if isWinKeyPressed && kbd.VkCode == VK_K {
 					pressKey(VK_MENU)
-					pressKey(VK_SHIFT)
+					pressKey(VK_LSHIFT)
 					pressKey(VK_ESCAPE)
 					releaseKey(VK_ESCAPE)
-					releaseKey(VK_SHIFT)
+					releaseKey(VK_LSHIFT)
 					releaseKey(VK_MENU)
 					return 1
 				}
