@@ -26,6 +26,7 @@ var (
 	translateMessage    = user32.NewProc("TranslateMessage")
 	dispatchMessage     = user32.NewProc("DispatchMessage")
 	keybdEvent          = user32.NewProc("keybd_event")
+	getKeyState         = user32.NewProc("GetKeyState")
 
 	kernel32           = windows.NewLazySystemDLL("kernel32.dll")
 	getCurrentThreadId = kernel32.NewProc("GetCurrentThreadId")
@@ -316,4 +317,16 @@ func KeybdEvent(bVk, bScan wintypes.BYTE, dwFlags wintypes.DWORD, dwExtraInfo wi
 		uintptr(dwFlags),
 		uintptr(dwExtraInfo),
 	)
+}
+
+/*
+https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getkeystate
+SHORT GetKeyState(
+  [in] int nVirtKey
+);
+*/
+func GetKeyState(nVirtKey int) int {
+	ret, _, _ := getKeyState.Call(
+		uintptr(nVirtKey))
+	return int(ret)
 }

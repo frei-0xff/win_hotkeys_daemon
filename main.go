@@ -26,8 +26,7 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 			if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
 				if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
 					winKeyPressed = true
-				}
-				if wparam == wintypes.WPARAM(wintypes.WM_KEYUP) {
+				} else {
 					winKeyPressed = false
 					if altTabEmulating {
 						altTabEmulating = false
@@ -36,6 +35,8 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 				}
 			}
 			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
+				fmt.Print(winapi.GetKeyState(int(wintypes.VK_LWIN)), " ")
+				fmt.Print(winapi.GetKeyState(int(wintypes.VK_RWIN)), " ")
 				if winKeyPressed {
 					fmt.Print("win+")
 				}
