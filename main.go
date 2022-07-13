@@ -22,33 +22,33 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 	if nCode >= 0 {
 		// Resolve struct that holds real event data
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
-		if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
-			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
-				winKeyPressed = true
-			} else {
-				winKeyPressed = false
-				if altTabEmulating {
-					altTabEmulating = false
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
+		if kbd.ScanCode != 0xff {
+			if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
+				if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
+					winKeyPressed = true
+				}
+				if wparam == wintypes.WPARAM(wintypes.WM_KEYUP) {
+					winKeyPressed = false
+					if altTabEmulating {
+						altTabEmulating = false
+						winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
+					}
 				}
 			}
-		}
-		if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
-			if winKeyPressed {
-				fmt.Print("win+")
-			}
-			fmt.Println(kbd.VkCode)
-			if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
-				if !altTabEmulating {
-					altTabEmulating = true
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xb8, 0, 0) //Alt Press
+			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
+				if winKeyPressed {
+					fmt.Print("win+")
 				}
-				if altTabEmulating {
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, 0, 0)                        // Tab Press
-					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0x8f, wintypes.KEYEVENTF_KEYUP, 0) // Tab Release
+				fmt.Println(kbd.VkCode, " ", kbd.ScanCode)
+				if winKeyPressed && kbd.VkCode == wintypes.VK_TAB {
+					if !altTabEmulating {
+						altTabEmulating = true
+						winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, 0, 0) //Alt Press
+					}
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0xff, 0, 0)                        // Tab Press
+					winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_TAB), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Tab Release
 					return 1
 				}
-				return 1
 			}
 		}
 	}
