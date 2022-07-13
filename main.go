@@ -11,7 +11,6 @@ import (
 var (
 	keyboardHook    wintypes.HHOOK
 	keyCallback     wintypes.HOOKPROC = keyPressCallback
-	winKeyPressed   bool              = false
 	altTabEmulating bool              = false
 )
 
@@ -23,16 +22,11 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 		// Resolve struct that holds real event data
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
-			if kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN {
-				if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) {
-					winKeyPressed = true
-				} else {
-					winKeyPressed = false
-					if altTabEmulating {
-						altTabEmulating = false
-						winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
-					}
-				}
+			winKeyPressed := winapi.GetKeyState(int(wintypes.VK_LWIN)) != 0 || winapi.GetKeyState(int(wintypes.VK_RWIN)) != 0
+			if (kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN) &&
+				wparam != wintypes.WPARAM(wintypes.WM_KEYDOWN) && altTabEmulating {
+				altTabEmulating = false
+				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
 			}
 			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
 				fmt.Print(winapi.GetKeyState(int(wintypes.VK_LWIN)), " ")
