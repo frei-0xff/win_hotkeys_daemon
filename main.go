@@ -22,15 +22,15 @@ func keyPressCallback(nCode int, wparam wintypes.WPARAM, lparam wintypes.LPARAM)
 		// Resolve struct that holds real event data
 		kbd := (*wintypes.KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
-			winKeyPressed := winapi.GetKeyState(int(wintypes.VK_LWIN)) != 0 || winapi.GetKeyState(int(wintypes.VK_RWIN)) != 0
+			winKeyPressed := winapi.GetAsyncKeyState(int(wintypes.VK_LWIN)) > 1 || winapi.GetAsyncKeyState(int(wintypes.VK_RWIN)) > 1
 			if (kbd.VkCode == wintypes.VK_LWIN || kbd.VkCode == wintypes.VK_RWIN) &&
 				wparam != wintypes.WPARAM(wintypes.WM_KEYDOWN) && altTabEmulating {
 				altTabEmulating = false
 				winapi.KeybdEvent(wintypes.BYTE(wintypes.VK_MENU), 0xff, wintypes.KEYEVENTF_KEYUP, 0) // Alt Release
 			}
 			if wparam == wintypes.WPARAM(wintypes.WM_KEYDOWN) || wparam == wintypes.WPARAM(wintypes.WM_SYSKEYDOWN) {
-				fmt.Print(winapi.GetKeyState(int(wintypes.VK_LWIN)), " ")
-				fmt.Print(winapi.GetKeyState(int(wintypes.VK_RWIN)), " ")
+				fmt.Print(winapi.GetAsyncKeyState(int(wintypes.VK_LWIN)), " ")
+				fmt.Print(winapi.GetAsyncKeyState(int(wintypes.VK_RWIN)), " ")
 				if winKeyPressed {
 					fmt.Print("win+")
 				}
