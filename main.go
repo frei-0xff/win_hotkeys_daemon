@@ -111,10 +111,16 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	return CallNextHookEx(keyboardHook, nCode, wparam, lparam)
 }
 
-/*
-Attaches our initial hooks and runs the message queue
-*/
+func MessageLoop() {
+	var msg MSG
+	for GetMessage(&msg, 0, 0, 0) != 0 {
+		TranslateMessage(&msg)
+		DispatchMessage(&msg)
+	}
+}
+
 func Run(restart <-chan struct{}) {
+	go MessageLoop()
 	for {
 		func() {
 			keyboardHook = SetWindowsHookEx(
