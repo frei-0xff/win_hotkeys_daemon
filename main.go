@@ -23,11 +23,11 @@ func shiftKeyState() bool {
 }
 
 func pressKey(key DWORD) {
-	KeybdEvent(BYTE(key), 0xff, 0, 0)
+	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_EXTENDEDKEY, 0)
 }
 
 func releaseKey(key DWORD) {
-	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_KEYUP, 0)
+	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0)
 }
 
 func runProgram(path string, flags DWORD) {
