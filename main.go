@@ -3,14 +3,14 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 	"unsafe"
+
+	"github.com/getlantern/systray"
 )
 
 var (
-	keyboardHook        HHOOK
-	altTabEmulating     bool = false
-	restartKeyboardHook chan struct{}
+	keyboardHook    HHOOK
+	altTabEmulating bool = false
 )
 
 func winKeyState() bool {
@@ -41,17 +41,6 @@ func runProgram(path string, flags DWORD) {
 Handles callbacks for low level keyboard events
 */
 func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
-	select {
-	case <-restartKeyboardHook:
-		UnhookWindowsHookEx(keyboardHook)
-		keyboardHook = SetWindowsHookEx(
-			WH_KEYBOARD_LL,
-			keyPressCallback,
-			0,
-			0,
-		)
-	default:
-	}
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
@@ -122,7 +111,7 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	return CallNextHookEx(keyboardHook, nCode, wparam, lparam)
 }
 
-func Start() {
+func StartKbdHook() {
 	keyboardHook = SetWindowsHookEx(
 		WH_KEYBOARD_LL,
 		keyPressCallback,
@@ -139,9 +128,21 @@ func Start() {
 }
 
 func main() {
-	restartKeyboardHook = make(chan struct{})
-	go Start()
-	<-time.After(time.Minute)
-	restartKeyboardHook <- struct{}{}
-	select {}
+	systray.Run(onReady, onExit)
+}
+
+func onReady() {
+	systray.SetIcon(iconData)
+	systray.SetTitle("WinHotkeysDaemon")
+	systray.SetTooltip("Hotkeys Daemon")
+	mQuit := systray.AddMenuItem("Выход", "")
+	go func() {
+		<-mQuit.ClickedCh
+		systray.Quit()
+	}()
+	StartKbdHook()
+}
+
+func onExit() {
+	// clean up here
 }
