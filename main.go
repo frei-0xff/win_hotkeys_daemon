@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 	"unsafe"
 )
 
@@ -111,7 +110,15 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	return CallNextHookEx(keyboardHook, nCode, wparam, lparam)
 }
 
-func MessageLoop() {
+func Start() {
+	keyboardHook = SetWindowsHookEx(
+		WH_KEYBOARD_LL,
+		keyCallback,
+		0,
+		0,
+	)
+	defer UnhookWindowsHookEx(keyboardHook)
+
 	var msg MSG
 	for GetMessage(&msg, 0, 0, 0) != 0 {
 		TranslateMessage(&msg)
@@ -119,28 +126,7 @@ func MessageLoop() {
 	}
 }
 
-func Run(restart <-chan struct{}) {
-	go MessageLoop()
-	for {
-		func() {
-			keyboardHook = SetWindowsHookEx(
-				WH_KEYBOARD_LL,
-				keyCallback,
-				0,
-				0,
-			)
-			defer UnhookWindowsHookEx(keyboardHook)
-
-			<-restart
-		}()
-		fmt.Println("Restarted")
-	}
-}
-
 func main() {
-	restart := make(chan struct{})
-	go Run(restart)
-	<-time.After(time.Minute)
-	restart <- struct{}{}
+	go Start()
 	select {}
 }
