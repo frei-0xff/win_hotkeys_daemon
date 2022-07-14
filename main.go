@@ -125,16 +125,7 @@ func Run(restart <-chan struct{}) {
 			)
 			defer UnhookWindowsHookEx(keyboardHook)
 
-			var msg MSG
-			for GetMessage(&msg, 0, 0, 0) != 0 {
-				TranslateMessage(&msg)
-				DispatchMessage(&msg)
-				select {
-				case <-restart:
-					return
-				default:
-				}
-			}
+			<-restart
 		}()
 		fmt.Println("Restarted")
 	}
