@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unsafe"
 )
 
 var (
-	keyboardHook    HHOOK
-	keyCallback     HOOKPROC = keyPressCallback
-	altTabEmulating bool     = false
+	keyboardHook        HHOOK
+	altTabEmulating     bool = false
+	restartKeyboardHook chan struct{}
 )
 
 func winKeyState() bool {
@@ -40,6 +41,17 @@ func runProgram(path string, flags DWORD) {
 Handles callbacks for low level keyboard events
 */
 func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
+	select {
+	case <-restartKeyboardHook:
+		UnhookWindowsHookEx(keyboardHook)
+		keyboardHook = SetWindowsHookEx(
+			WH_KEYBOARD_LL,
+			keyPressCallback,
+			0,
+			0,
+		)
+	default:
+	}
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
@@ -113,7 +125,7 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 func Start() {
 	keyboardHook = SetWindowsHookEx(
 		WH_KEYBOARD_LL,
-		keyCallback,
+		keyPressCallback,
 		0,
 		0,
 	)
@@ -127,6 +139,9 @@ func Start() {
 }
 
 func main() {
+	restartKeyboardHook = make(chan struct{})
 	go Start()
+	<-time.After(time.Minute)
+	restartKeyboardHook <- struct{}{}
 	select {}
 }
