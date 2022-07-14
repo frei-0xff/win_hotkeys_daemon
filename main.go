@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"unsafe"
 
@@ -41,6 +42,7 @@ func runProgram(path string, flags DWORD) {
 Handles callbacks for low level keyboard events
 */
 func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
+	runtime.LockOSThread()
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
@@ -111,7 +113,18 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	return CallNextHookEx(keyboardHook, nCode, wparam, lparam)
 }
 
+func windowChangeCallback(hWinEventHook HWINEVENTHOOK, event DWORD, hwnd HWND,
+	idObject LONG, idChild LONG, idEventThread DWORD,
+	dwmsEventTime DWORD) uintptr {
+
+	if GetWindowText(hwnd) == "Представление задач" {
+		PostMessage(hwnd, WM_CLOSE, 0, 0)
+	}
+	return uintptr(0)
+}
+
 func StartKbdHook() {
+	runtime.LockOSThread()
 	keyboardHook = SetWindowsHookEx(
 		WH_KEYBOARD_LL,
 		keyPressCallback,
@@ -119,6 +132,16 @@ func StartKbdHook() {
 		0,
 	)
 	defer UnhookWindowsHookEx(keyboardHook)
+	windowSwitchHook := SetWinEventHook(
+		EVENT_OBJECT_FOCUS,
+		EVENT_OBJECT_FOCUS,
+		0,
+		windowChangeCallback,
+		0,
+		0,
+		0|2,
+	)
+	defer UnhookWinEvent(windowSwitchHook)
 
 	var msg MSG
 	for GetMessage(&msg, 0, 0, 0) != 0 {
