@@ -5,8 +5,6 @@ import (
 	"runtime"
 	"strings"
 	"unsafe"
-
-	"github.com/getlantern/systray"
 )
 
 var (
@@ -123,7 +121,7 @@ func windowChangeCallback(hWinEventHook HWINEVENTHOOK, event DWORD, hwnd HWND,
 	return uintptr(0)
 }
 
-func StartKbdHook() {
+func Start() {
 	runtime.LockOSThread()
 	keyboardHook = SetWindowsHookEx(
 		WH_KEYBOARD_LL,
@@ -151,21 +149,6 @@ func StartKbdHook() {
 }
 
 func main() {
-	systray.Run(onReady, onExit)
-}
-
-func onReady() {
-	systray.SetIcon(iconData)
-	systray.SetTitle("WinHotkeysDaemon")
-	systray.SetTooltip("Hotkeys Daemon")
-	mQuit := systray.AddMenuItem("Выход", "")
-	go func() {
-		<-mQuit.ClickedCh
-		systray.Quit()
-	}()
-	StartKbdHook()
-}
-
-func onExit() {
-	// clean up here
+	go Start()
+	select {}
 }
