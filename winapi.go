@@ -32,7 +32,6 @@ var (
 	getClipboardData    = user32.NewProc("GetClipboardData")
 	closeClipboard      = user32.NewProc("CloseClipboard")
 	setCursorPos        = user32.NewProc("SetCursorPos")
-	postQuitMessage     = user32.NewProc("PostQuitMessage")
 
 	kernel32           = windows.NewLazySystemDLL("kernel32.dll")
 	getCurrentThreadId = kernel32.NewProc("GetCurrentThreadId")
@@ -430,15 +429,4 @@ func SetCursorPos(X, Y int) BOOL {
 		uintptr(Y),
 	)
 	return BOOL(ret)
-}
-
-/*
-https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postquitmessage
-void PostQuitMessage(
-  [in] int nExitCode
-);
-*/
-func PostQuitMessage(nExitCode int) {
-	postQuitMessage.Call(
-		uintptr(nExitCode))
 }

@@ -114,7 +114,7 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 /*
 Attaches our initial hooks and runs the message queue
 */
-func Run() {
+func Run(restart <-chan struct{}) {
 	for {
 		func() {
 			keyboardHook = SetWindowsHookEx(
@@ -129,6 +129,11 @@ func Run() {
 			for GetMessage(&msg, 0, 0, 0) != 0 {
 				TranslateMessage(&msg)
 				DispatchMessage(&msg)
+				select {
+				case <-restart:
+					return
+				default:
+				}
 			}
 		}()
 		fmt.Println("Restarted")
@@ -136,8 +141,9 @@ func Run() {
 }
 
 func main() {
-	go Run()
+	restart := make(chan struct{})
+	go Run(restart)
 	<-time.After(time.Minute)
-	PostQuitMessage(0)
+	restart <- struct{}{}
 	select {}
 }
