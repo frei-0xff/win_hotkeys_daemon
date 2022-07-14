@@ -94,12 +94,12 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 						return 1
 					}
 				}
-				if isWinKeyPressed && kbd.VkCode == VK_RIGHT {
+				if isWinKeyPressed && kbd.VkCode == VK_RIGHT && !shiftKeyState() {
 					SetCursorPos(2560, 1592)
 					SetCursorPos(2560, 1592)
 					return 1
 				}
-				if isWinKeyPressed && kbd.VkCode == VK_LEFT {
+				if isWinKeyPressed && kbd.VkCode == VK_LEFT && !shiftKeyState() {
 					SetCursorPos(960, 540)
 					SetCursorPos(960, 540)
 					return 1
