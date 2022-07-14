@@ -23,11 +23,11 @@ func shiftKeyState() bool {
 }
 
 func pressKey(key DWORD) {
-	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_EXTENDEDKEY, 0)
+	KeybdEvent(BYTE(key), 0xff, 0, 0)
 }
 
 func releaseKey(key DWORD) {
-	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0)
+	KeybdEvent(BYTE(key), 0xff, KEYEVENTF_KEYUP, 0)
 }
 
 func runProgram(path string, flags DWORD) {
@@ -71,22 +71,22 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 					PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0)
 					return 1
 				}
-				if isWinKeyPressed && kbd.VkCode == VK_J {
-					pressKey(VK_MENU)
-					pressKey(VK_ESCAPE)
-					releaseKey(VK_ESCAPE)
-					releaseKey(VK_MENU)
-					return 1
-				}
-				if isWinKeyPressed && kbd.VkCode == VK_K {
-					pressKey(VK_MENU)
-					pressKey(VK_LSHIFT)
-					pressKey(VK_ESCAPE)
-					releaseKey(VK_ESCAPE)
-					releaseKey(VK_LSHIFT)
-					releaseKey(VK_MENU)
-					return 1
-				}
+				// if isWinKeyPressed && kbd.VkCode == VK_J {
+				//     pressKey(VK_MENU)
+				//     pressKey(VK_ESCAPE)
+				//     releaseKey(VK_ESCAPE)
+				//     releaseKey(VK_MENU)
+				//     return 1
+				// }
+				// if isWinKeyPressed && kbd.VkCode == VK_K {
+				//     pressKey(VK_MENU)
+				//     pressKey(VK_LSHIFT)
+				//     pressKey(VK_ESCAPE)
+				//     releaseKey(VK_ESCAPE)
+				//     releaseKey(VK_LSHIFT)
+				//     releaseKey(VK_MENU)
+				//     return 1
+				// }
 				if isWinKeyPressed && kbd.VkCode == VK_M {
 					if shiftKeyState() {
 						clpText := strings.ReplaceAll(GetClipboardData(), `"`, ``)
