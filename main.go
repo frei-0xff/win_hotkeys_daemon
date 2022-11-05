@@ -40,7 +40,6 @@ func runProgram(path string, flags DWORD) {
 Handles callbacks for low level keyboard events
 */
 func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
-	runtime.LockOSThread()
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
@@ -122,7 +121,6 @@ func windowChangeCallback(hWinEventHook HWINEVENTHOOK, event DWORD, hwnd HWND,
 }
 
 func Start() {
-	runtime.LockOSThread()
 	keyboardHook = SetWindowsHookEx(
 		WH_KEYBOARD_LL,
 		keyPressCallback,
@@ -149,6 +147,7 @@ func Start() {
 }
 
 func main() {
+	runtime.GOMAXPROCS(1)
 	go Start()
 	select {}
 }
