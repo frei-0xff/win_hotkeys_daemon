@@ -61,9 +61,6 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 						altTabEmulating = true
 						pressKey(VK_MENU)
 					}
-					pressKey(VK_TAB)
-					releaseKey(VK_TAB)
-					return 1
 				}
 				if isWinKeyPressed && kbd.VkCode == VK_W {
 					runProgram(`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`, SW_MAXIMIZE)
