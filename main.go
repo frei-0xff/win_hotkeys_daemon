@@ -7,20 +7,14 @@ import (
 	"unsafe"
 )
 
+const LLKHF_UP = 0x80
+
 var (
-	keyboardHook    HHOOK
-	altTabEmulating bool = false
+	keyboardHook      HHOOK
+	altTabEmulating   bool = false
+	isWinKeyPressed   bool
+	isShiftKeyPressed bool
 )
-
-func winKeyState() bool {
-	return GetAsyncKeyState(int(VK_LWIN)) > 1 ||
-		GetAsyncKeyState(int(VK_RWIN)) > 1 ||
-		GetAsyncKeyState(int(VK_APPS)) > 1
-}
-
-func shiftKeyState() bool {
-	return GetAsyncKeyState(int(VK_SHIFT)) > 1
-}
 
 func pressKey(key DWORD) {
 	KeybdEvent(BYTE(key), 0xff, 0, 0)
@@ -43,13 +37,25 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 	if nCode >= 0 {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lparam))
 		if kbd.ScanCode != 0xff {
-			if altTabEmulating && wparam != WPARAM(WM_KEYDOWN) &&
-				(kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS) {
-				altTabEmulating = false
-				releaseKey(VK_MENU)
-			}
-			if wparam == WPARAM(WM_KEYDOWN) || wparam == WPARAM(WM_SYSKEYDOWN) {
-				isWinKeyPressed := winKeyState()
+			if kbd.Flags&LLKHF_UP != 0 { // Key UP
+				if kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS {
+					isWinKeyPressed = false
+					if altTabEmulating {
+						altTabEmulating = false
+						releaseKey(VK_MENU)
+					}
+				}
+				if kbd.VkCode == VK_LSHIFT || kbd.VkCode == VK_RSHIFT || kbd.VkCode == VK_SHIFT {
+					isShiftKeyPressed = false
+				}
+			} else { // Key DOWN
+				if kbd.VkCode == VK_LWIN || kbd.VkCode == VK_RWIN || kbd.VkCode == VK_APPS {
+					isWinKeyPressed = true
+				}
+				if kbd.VkCode == VK_LSHIFT || kbd.VkCode == VK_RSHIFT || kbd.VkCode == VK_SHIFT {
+					isShiftKeyPressed = true
+				}
+
 				if isWinKeyPressed && kbd.VkCode == VK_TAB {
 					if !altTabEmulating {
 						altTabEmulating = true
@@ -88,18 +94,18 @@ func keyPressCallback(nCode int, wparam WPARAM, lparam LPARAM) LRESULT {
 				//     return 1
 				// }
 				if isWinKeyPressed && kbd.VkCode == VK_M {
-					if shiftKeyState() {
+					if isShiftKeyPressed {
 						clpText := strings.ReplaceAll(GetClipboardData(), `"`, ``)
 						runProgram(fmt.Sprintf(`C:/ProgramData/chocolatey/lib/mpv.install/tools/mpv.com "%s"`, clpText), SW_MINIMIZE)
 						return 1
 					}
 				}
-				if isWinKeyPressed && kbd.VkCode == VK_RIGHT && !shiftKeyState() {
+				if isWinKeyPressed && kbd.VkCode == VK_RIGHT && !isShiftKeyPressed {
 					SetCursorPos(2560, 1592)
 					SetCursorPos(2560, 1592)
 					return 1
 				}
-				if isWinKeyPressed && kbd.VkCode == VK_LEFT && !shiftKeyState() {
+				if isWinKeyPressed && kbd.VkCode == VK_LEFT && !isShiftKeyPressed {
 					SetCursorPos(960, 540)
 					SetCursorPos(960, 540)
 					return 1
